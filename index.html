@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AISC Weld Capacity Calculator</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#1e293b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%231e293b'/><path d='M20 80 L50 20 L80 80' stroke='%2338bdf8' stroke-width='8' fill='none' stroke-linejoin='round'/><path d='M35 50 L65 50' stroke='%2338bdf8' stroke-width='8' fill='none'/><circle cx='50' cy='50' r='6' fill='%23f8fafc'/></svg>">
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'Sarabun', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            900: '#0c4a6e',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        body { background-color: #f8fafc; }
+        .math-box { font-family: 'Inter', serif; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        // --- Utility Components ---
+        const Sub = ({ children }) => <sub className="-ml-0.5 text-[0.75em] bottom-[-0.2em] relative">{children}</sub>;
+        
+        const Fraction = ({ top, bottom }) => (
+            <span className="inline-flex flex-col items-center justify-center align-middle mx-1 text-sm">
+                <span className="border-b border-slate-700 pb-0.5 px-1 w-full text-center">{top}</span>
+                <span className="pt-0.5 px-1 w-full text-center">{bottom}</span>
+            </span>
+        );
+
+        const Eq = ({ children }) => (
+            <div className="flex items-center space-x-2 text-slate-800 math-box overflow-x-auto py-1">
+                {children}
+            </div>
+        );
+
+        const StepBox = ({ title, children, reference }) => (
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 mb-4 shadow-sm">
+                <div className="flex justify-between items-center mb-3 border-b border-slate-200 pb-2">
+                    <h4 className="font-semibold text-slate-700 text-sm">{title}</h4>
+                    {reference && <span className="text-xs text-brand-600 bg-brand-50 px-2 py-1 rounded border border-brand-100">{reference}</span>}
+                </div>
+                <div className="space-y-3 text-sm">
+                    {children}
+                </div>
+            </div>
+        );
+
+        const Card = ({ children, className = "" }) => (
+            <div className={`bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden ${className}`}>
+                {children}
+            </div>
+        );
+
+        // --- Main App Component ---
+        const App = () => {
+            // Global State
+            const [fy, setFy] = useState(2500); // ksc
+            const [fu, setFu] = useState(4000); // ksc
+            const [electrode, setElectrode] = useState(4900); // E70XX -> 4900 ksc
+            const [t1, setT1] = useState(10); // mm
+            const [t2, setT2] = useState(10); // mm
+            const [method, setMethod] = useState('LRFD');
+            const [activeTab, setActiveTab] = useState('guide');
+
+            // Tab States
+            const [fwL, setFwL] = useState(100); // mm
+            const [fwW, setFwW] = useState(6); // mm
+
+            const [pjpS, setPjpS] = useState(8); // mm
+            const [pjpAngle, setPjpAngle] = useState(60); // degrees
+            const [pjpL, setPjpL] = useState(100); // mm
+
+            const [plugD, setPlugD] = useState(20); // mm
+            const [plugL, setPlugL] = useState(20); // mm (d=L for plug, L>d for slot)
+            const [plugT, setPlugT] = useState(10); // mm
+
+            // Shared Derived Values
+            const tMax = Math.max(t1, t2);
+            const tMin = Math.min(t1, t2);
+            
+            // Factors
+            const phi_weld = 0.75;
+            const omega_weld = 2.00;
+            const phi_shear_y = 1.00;
+            const omega_shear_y = 1.50;
+            const phi_shear_r = 0.75;
+            const omega_shear_r = 2.00;
+
+            const formatNum = (num) => {
+                const n = Number(num);
+                // ถ้าเป็นจำนวนเต็ม ให้ไม่ต้องแสดงจุดทศนิยม
+                if (Number.isInteger(n)) {
+                    return n.toLocaleString('en-US');
+                }
+                // ถ้ามีเศษทศนิยม ให้แสดง 2 ตำแหน่ง
+                return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            };
+
+            // Fillet Weld Logic
+            const checkFilletWeld = useMemo(() => {
+                let wMin = 3;
+                if (tMax > 19) wMin = 8;
+                else if (tMax > 13) wMin = 6;
+                else if (tMax > 6) wMin = 5;
+
+                let wMax = tMin < 6 ? tMin : tMin - 2;
+
+                const isWeldSizeOk = fwW >= wMin && fwW <= wMax;
+                const L_cm = fwL / 10;
+                const w_cm = fwW / 10;
+                const tMin_cm = tMin / 10;
+
+                const Awe = 0.707 * w_cm * L_cm;
+                const Rn_weld = 0.60 * electrode * Awe;
+                
+                const Agv = tMin_cm * L_cm;
+                const Rn_bm_y = 0.60 * fy * Agv;
+                const Rn_bm_r = 0.60 * fu * Agv;
+
+                let design_Rn_weld, design_Rn_bm_y, design_Rn_bm_r;
+
+                if (method === 'LRFD') {
+                    design_Rn_weld = Rn_weld * phi_weld;
+                    design_Rn_bm_y = Rn_bm_y * phi_shear_y;
+                    design_Rn_bm_r = Rn_bm_r * phi_shear_r;
+                } else {
+                    design_Rn_weld = Rn_weld / omega_weld;
+                    design_Rn_bm_y = Rn_bm_y / omega_shear_y;
+                    design_Rn_bm_r = Rn_bm_r / omega_shear_r;
+                }
+
+                const design_Rn_bm = Math.min(design_Rn_bm_y, design_Rn_bm_r);
+                const final_capacity = Math.min(design_Rn_weld, design_Rn_bm);
+
+                return { wMin, wMax, isWeldSizeOk, Awe, Rn_weld, Rn_bm_y, Rn_bm_r, design_Rn_weld, design_Rn_bm_y, design_Rn_bm_r, design_Rn_bm, final_capacity, L_cm, w_cm, tMin_cm };
+            }, [fwW, fwL, tMax, tMin, electrode, fy, fu, method]);
+
+            // PJP Logic
+            const pjpData = useMemo(() => {
+                let te = pjpS;
+                if (pjpAngle < 60) te = Math.max(0, pjpS - 3);
+                
+                const te_cm = te / 10;
+                const L_cm = pjpL / 10;
+                const Awe = te_cm * L_cm;
+                const Rn_weld = 0.60 * electrode * Awe;
+                
+                let design_Rn_weld = method === 'LRFD' ? Rn_weld * phi_weld : Rn_weld / omega_weld;
+
+                return { te, Awe, Rn_weld, design_Rn_weld, te_cm, L_cm };
+            }, [pjpS, pjpAngle, pjpL, electrode, method]);
+
+            // Plug Logic
+            const plugData = useMemo(() => {
+                const d_cm = plugD / 10;
+                const L_cm = Math.max(plugD, plugL) / 10; // L must be >= d
+                
+                let Aw = 0;
+                if (d_cm === L_cm) {
+                    Aw = (Math.PI * Math.pow(d_cm, 2)) / 4; // Plug
+                } else {
+                    Aw = ((Math.PI * Math.pow(d_cm, 2)) / 4) + (d_cm * (L_cm - d_cm)); // Slot
+                }
+
+                const Rn_weld = 0.60 * electrode * Aw;
+                let design_Rn_weld = method === 'LRFD' ? Rn_weld * phi_weld : Rn_weld / omega_weld;
+
+                return { Aw, Rn_weld, design_Rn_weld, isSlot: L_cm > d_cm, d_cm, L_cm };
+            }, [plugD, plugL, electrode, method]);
+
+            return (
+                <div className="min-h-screen pb-12">
+                    {/* Header */}
+                    <header className="bg-slate-900 text-white p-4 sticky top-0 z-20 shadow-md">
+                        <div className="max-w-4xl mx-auto flex items-center gap-3">
+                            <svg className="w-8 h-8 text-brand-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                                <path d="M2 17l10 5 10-5" />
+                                <path d="M2 12l10 5 10-5" />
+                                <path d="M12 12v10" stroke="#38bdf8" strokeWidth="3"/>
+                            </svg>
+                            <div>
+                                <h1 className="text-lg font-bold leading-tight">AISC Weld Capacity</h1>
+                                <p className="text-xs text-slate-400">Structural Steel Welding Calculator (AISC 360-22)</p>
+                            </div>
+                        </div>
+                    </header>
+
+                    <main className="max-w-4xl mx-auto p-4 mt-2">
+                        
+                        {/* Global Inputs */}
+                        <Card className="mb-6 border-brand-200">
+                            <div className="bg-brand-50 px-4 py-3 border-b border-brand-100 flex justify-between items-center">
+                                <h2 className="font-semibold text-brand-900 flex items-center gap-2">
+                                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                                    ข้อมูลวัสดุหลัก (Global Inputs)
+                                </h2>
+                                <div className="flex bg-white rounded-lg p-1 shadow-sm border border-brand-200">
+                                    <button onClick={() => setMethod('LRFD')} className={`px-3 py-1 text-sm rounded-md font-medium transition-colors ${method === 'LRFD' ? 'bg-brand-500 text-white' : 'text-slate-500 hover:bg-slate-100'}`}>LRFD (ϕ)</button>
+                                    <button onClick={() => setMethod('ASD')} className={`px-3 py-1 text-sm rounded-md font-medium transition-colors ${method === 'ASD' ? 'bg-brand-500 text-white' : 'text-slate-500 hover:bg-slate-100'}`}>ASD (Ω)</button>
+                                </div>
+                            </div>
+                            <div className="p-4 grid grid-cols-2 md:grid-cols-5 gap-4">
+                                <div>
+                                    <label className="block text-xs text-slate-500 mb-1">F<Sub>y</Sub> Base Metal (ksc)</label>
+                                    <input type="number" value={fy} onChange={(e) => setFy(Number(e.target.value))} className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-brand-500 focus:border-brand-500 sm:text-sm" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-slate-500 mb-1">F<Sub>u</Sub> Base Metal (ksc)</label>
+                                    <input type="number" value={fu} onChange={(e) => setFu(Number(e.target.value))} className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-brand-500 focus:border-brand-500 sm:text-sm" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-slate-500 mb-1">ลวดเชื่อม F<Sub>EXX</Sub></label>
+                                    <select value={electrode} onChange={(e) => setElectrode(Number(e.target.value))} className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-brand-500 focus:border-brand-500 sm:text-sm">
+                                        <option value={4200}>E60XX (4,200 ksc)</option>
+                                        <option value={4900}>E70XX (4,900 ksc)</option>
+                                        <option value={5600}>E80XX (5,600 ksc)</option>
+                                        <option value={6300}>E90XX (6,300 ksc)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-slate-500 mb-1">ความหนา t<Sub>1</Sub> (mm)</label>
+                                    <input type="number" value={t1} onChange={(e) => setT1(Number(e.target.value))} className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-brand-500 focus:border-brand-500 sm:text-sm" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-slate-500 mb-1">ความหนา t<Sub>2</Sub> (mm)</label>
+                                    <input type="number" value={t2} onChange={(e) => setT2(Number(e.target.value))} className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-brand-500 focus:border-brand-500 sm:text-sm" />
+                                </div>
+                            </div>
+                        </Card>
+
+                        {/* Tabs Navigation */}
+                        <div className="flex space-x-1 overflow-x-auto hide-scrollbar border-b border-slate-200 mb-4">
+                            {[
+                                { id: 'guide', label: 'คู่มือ & ตัวแปร' },
+                                { id: 'fillet', label: 'Fillet Weld' },
+                                { id: 'cjp', label: 'CJP Groove' },
+                                { id: 'pjp', label: 'PJP Groove' },
+                                { id: 'plug', label: 'Plug & Slot' }
+                            ].map(tab => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`whitespace-nowrap px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors border-b-2 ${activeTab === tab.id ? 'border-brand-500 text-brand-700 bg-white' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
+                                >
+                                    {tab.label}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Tab Content Area */}
+                        <div className="min-h-[500px]">
+                            
+                            {/* --- TAB: GUIDE --- */}
+                            {activeTab === 'guide' && (
+                                <div className="space-y-4 animate-fade-in">
+                                    <Card className="p-5">
+                                        <h3 className="text-lg font-bold text-slate-800 mb-4 border-b pb-2">คำอธิบายตัวแปร & ข้อกำหนด</h3>
+                                        <div className="grid md:grid-cols-2 gap-6">
+                                            <div>
+                                                <ul className="space-y-2 text-sm text-slate-600">
+                                                    <li><strong className="text-slate-800">F<Sub>y</Sub></strong> = กำลังจุดครากของวัสดุชิ้นงาน (Yield Strength)</li>
+                                                    <li><strong className="text-slate-800">F<Sub>u</Sub></strong> = กำลังรับแรงดึงประลัยของวัสดุชิ้นงาน (Ultimate Strength)</li>
+                                                    <li><strong className="text-slate-800">F<Sub>EXX</Sub></strong> = กำลังรับแรงดึงประลัยของลวดเชื่อม</li>
+                                                    <li><strong className="text-slate-800">w</strong> = ขนาดขารอยเชื่อมมุม (Leg size)</li>
+                                                    <li><strong className="text-slate-800">t<Sub>e</Sub></strong> = ความหนาคอประสานผล (Effective throat)</li>
+                                                    <li><strong className="text-slate-800">LRFD (ϕ)</strong> = ตัวคูณลดกำลัง (Resistance Factor)</li>
+                                                    <li><strong className="text-slate-800">ASD (Ω)</strong> = ตัวคูณความปลอดภัย (Safety Factor)</li>
+                                                </ul>
+
+                                                <h4 className="font-semibold text-slate-800 mt-6 mb-2">ตารางขนาดรอยเชื่อมมุมต่ำสุด (AISC Table J2.4)</h4>
+                                                <table className="w-full text-sm text-left text-slate-600 border border-slate-200">
+                                                    <thead className="bg-slate-50">
+                                                        <tr><th className="px-3 py-2 border-b">ความหนาชิ้นงานที่หนากว่า (t)</th><th className="px-3 py-2 border-b">w<Sub>min</Sub> (mm)</th></tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr><td className="px-3 py-2 border-b">t ≤ 6 mm</td><td className="px-3 py-2 border-b">3</td></tr>
+                                                        <tr><td className="px-3 py-2 border-b">6 &lt; t ≤ 13 mm</td><td className="px-3 py-2 border-b">5</td></tr>
+                                                        <tr><td className="px-3 py-2 border-b">13 &lt; t ≤ 19 mm</td><td className="px-3 py-2 border-b">6</td></tr>
+                                                        <tr><td className="px-3 py-2">t &gt; 19 mm</td><td className="px-3 py-2">8</td></tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+
+                                            <div className="bg-slate-50 p-4 rounded-lg flex flex-col items-center justify-center border border-slate-200">
+                                                <h4 className="font-semibold text-slate-800 mb-2 w-full text-center">ภาพประกอบ Fillet Weld</h4>
+                                                <svg viewBox="0 0 300 200" className="w-full max-w-sm drop-shadow-sm">
+                                                    {/* Base Plates */}
+                                                    <rect x="20" y="140" width="260" height="40" fill="#cbd5e1" stroke="#475569" strokeWidth="2"/>
+                                                    <rect x="130" y="20" width="40" height="120" fill="#cbd5e1" stroke="#475569" strokeWidth="2"/>
+                                                    
+                                                    {/* Weld */}
+                                                    <path d="M 170 140 L 170 90 Q 185 115 220 140 Z" fill="#38bdf8" stroke="#0284c7" strokeWidth="2" opacity="0.8"/>
+                                                    
+                                                    {/* Lines and Text */}
+                                                    <line x1="170" y1="140" x2="195" y2="115" stroke="#ef4444" strokeWidth="2" strokeDasharray="4 2"/>
+                                                    <text x="198" y="112" fontSize="10" fill="#ef4444" fontWeight="bold">0.707w (Throat)</text>
+                                                    
+                                                    <line x1="225" y1="145" x2="245" y2="145" stroke="#475569" strokeWidth="1"/>
+                                                    <text x="250" y="148" fontSize="10" fill="#475569">Toe</text>
+                                                    
+                                                    <line x1="165" y1="145" x2="145" y2="160" stroke="#475569" strokeWidth="1"/>
+                                                    <text x="120" y="168" fontSize="10" fill="#475569">Root</text>
+                                                    
+                                                    <text x="195" y="152" fontSize="12" fill="#0284c7" fontWeight="bold">w</text>
+                                                    <text x="175" y="120" fontSize="12" fill="#0284c7" fontWeight="bold">w</text>
+                                                </svg>
+                                            </div>
+                                        </div>
+                                    </Card>
+                                </div>
+                            )}
+
+                            {/* --- TAB: FILLET WELD --- */}
+                            {activeTab === 'fillet' && (
+                                <div className="space-y-4 animate-fade-in">
+                                    <div className="grid md:grid-cols-3 gap-4">
+                                        <Card className="p-4 md:col-span-1 border-t-4 border-t-brand-500">
+                                            <h3 className="font-bold text-slate-800 mb-3">ระบุขนาดรอยเชื่อมมุม</h3>
+                                            <div className="space-y-4">
+                                                <div>
+                                                    <label className="block text-sm text-slate-600 mb-1">ขนาดขารอยเชื่อม (w) - mm</label>
+                                                    <input type="number" value={fwW} onChange={(e) => setFwW(Number(e.target.value))} className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-brand-500 focus:border-brand-500" />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm text-slate-600 mb-1">ความยาวรอยเชื่อม (L) - mm</label>
+                                                    <input type="number" value={fwL} onChange={(e) => setFwL(Number(e.target.value))} className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-brand-500 focus:border-brand-500" />
+                                                </div>
+
+                                                {!checkFilletWeld.isWeldSizeOk && (
+                                                    <div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-600 text-sm">
+                                                        <strong>คำเตือน:</strong> ขนาดรอยเชื่อมไม่ผ่านเกณฑ์<br/>
+                                                        w ที่ยอมรับได้: {checkFilletWeld.wMin} - {checkFilletWeld.wMax} mm
+                                                    </div>
+                                                )}
+                                                {checkFilletWeld.isWeldSizeOk && (
+                                                    <div className="p-3 bg-green-50 border border-green-200 rounded-md text-green-700 text-sm">
+                                                        ขนาดรอยเชื่อมผ่านเกณฑ์ (OK)
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </Card>
+
+                                        <Card className="p-5 md:col-span-2">
+                                            <h3 className="font-bold text-slate-800 mb-4 border-b pb-2">วิธีการคำนวณ (Calculation Steps)</h3>
+                                            
+                                            <StepBox title="1. สรุปตัวแปรสำหรับการคำนวณ" reference={method}>
+                                                <ul className="grid grid-cols-2 gap-2 text-slate-700">
+                                                    <li>F<Sub>EXX</Sub> = {formatNum(electrode)} ksc</li>
+                                                    <li>F<Sub>y</Sub> = {formatNum(fy)} ksc, F<Sub>u</Sub> = {formatNum(fu)} ksc</li>
+                                                    <li>w = {fwW} mm = {checkFilletWeld.w_cm} cm</li>
+                                                    <li>L = {fwL} mm = {checkFilletWeld.L_cm} cm</li>
+                                                    <li>t<Sub>min</Sub> = {tMin} mm = {checkFilletWeld.tMin_cm} cm</li>
+                                                    {method === 'LRFD' ? (
+                                                        <li className="col-span-2 text-brand-700 mt-1">ϕ<Sub>weld</Sub> = 0.75, ϕ<Sub>shear,y</Sub> = 1.00, ϕ<Sub>shear,r</Sub> = 0.75</li>
+                                                    ) : (
+                                                        <li className="col-span-2 text-brand-700 mt-1">Ω<Sub>weld</Sub> = 2.00, Ω<Sub>shear,y</Sub> = 1.50, Ω<Sub>shear,r</Sub> = 2.00</li>
+                                                    )}
+                                                </ul>
+                                            </StepBox>
+
+                                            <StepBox title="2. กำลังรับแรงเฉือนของลวดเชื่อม (Weld Metal)" reference="AISC J2.4">
+                                                <Eq>
+                                                    <span>A<Sub>we</Sub></span> <span>=</span> <span>w × 0.707 × L</span>
+                                                    <span>=</span> <span>{checkFilletWeld.w_cm} × 0.707 × {checkFilletWeld.L_cm}</span>
+                                                    <span>=</span> <strong>{formatNum(checkFilletWeld.Awe)} cm²</strong>
+                                                </Eq>
+                                                <Eq>
+                                                    <span>R<Sub>n,weld</Sub></span> <span>=</span> <span>F<Sub>nw</Sub> × A<Sub>we</Sub></span>
+                                                    <span>=</span> <span>(0.60 × F<Sub>EXX</Sub>) × A<Sub>we</Sub></span>
+                                                </Eq>
+                                                <Eq>
+                                                    <span className="invisible">R<Sub>n,weld</Sub></span> <span>=</span> <span>0.60 × {electrode} × {formatNum(checkFilletWeld.Awe)}</span>
+                                                    <span>=</span> <strong>{formatNum(checkFilletWeld.Rn_weld)} kg</strong>
+                                                </Eq>
+                                                <Eq>
+                                                    <span className="text-brand-700 font-semibold">{method === 'LRFD' ? `ϕR${<Sub>n,weld</Sub>}` : `R${<Sub>n,weld</Sub>}/Ω`}</span> 
+                                                    <span>=</span> 
+                                                    <span className="text-brand-700 font-semibold">{formatNum(checkFilletWeld.design_Rn_weld)} kg</span>
+                                                </Eq>
+                                            </StepBox>
+
+                                            <StepBox title="3. กำลังรับแรงเฉือนของชิ้นงาน (Base Metal - ใช้แผ่นที่บางกว่า t_min)" reference="AISC J4.2">
+                                                <div className="text-xs text-slate-500 mb-2">*A<Sub>gv</Sub> = A<Sub>nv</Sub> = t<Sub>min</Sub> × L = {checkFilletWeld.tMin_cm} × {checkFilletWeld.L_cm} = {formatNum(checkFilletWeld.tMin_cm * checkFilletWeld.L_cm)} cm²</div>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="border-r pr-2 border-slate-200">
+                                                        <div className="font-semibold text-slate-700 mb-1">Shear Yielding</div>
+                                                        <Eq>R<Sub>n,y</Sub> = 0.60F<Sub>y</Sub>A<Sub>gv</Sub></Eq>
+                                                        <Eq>R<Sub>n,y</Sub> = 0.60({fy})({formatNum(checkFilletWeld.tMin_cm * checkFilletWeld.L_cm)})</Eq>
+                                                        <Eq>R<Sub>n,y</Sub> = {formatNum(checkFilletWeld.Rn_bm_y)} kg</Eq>
+                                                        <Eq><span className="text-brand-700 font-medium">Design = {formatNum(checkFilletWeld.design_Rn_bm_y)} kg</span></Eq>
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-semibold text-slate-700 mb-1">Shear Rupture</div>
+                                                        <Eq>R<Sub>n,r</Sub> = 0.60F<Sub>u</Sub>A<Sub>nv</Sub></Eq>
+                                                        <Eq>R<Sub>n,r</Sub> = 0.60({fu})({formatNum(checkFilletWeld.tMin_cm * checkFilletWeld.L_cm)})</Eq>
+                                                        <Eq>R<Sub>n,r</Sub> = {formatNum(checkFilletWeld.Rn_bm_r)} kg</Eq>
+                                                        <Eq><span className="text-brand-700 font-medium">Design = {formatNum(checkFilletWeld.design_Rn_bm_r)} kg</span></Eq>
+                                                    </div>
+                                                </div>
+                                            </StepBox>
+
+                                            <div className="bg-slate-800 text-white rounded-lg p-4 flex flex-col md:flex-row items-center justify-between shadow-md">
+                                                <div>
+                                                    <div className="text-sm text-slate-300">กำลังรับน้ำหนักที่ควบคุม (Controlling Capacity)</div>
+                                                    <div className="text-xs text-slate-400 mt-1">Min(Weld, Base Metal Yielding, Base Metal Rupture)</div>
+                                                </div>
+                                                <div className="text-right mt-2 md:mt-0">
+                                                    <div className="text-2xl font-bold text-brand-400">{formatNum(checkFilletWeld.final_capacity)} kg</div>
+                                                    <div className="text-sm">({formatNum(checkFilletWeld.final_capacity / 1000)} ton)</div>
+                                                </div>
+                                            </div>
+                                        </Card>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* --- TAB: CJP GROOVE WELD --- */}
+                            {activeTab === 'cjp' && (
+                                <div className="space-y-4 animate-fade-in">
+                                    <Card className="p-6">
+                                        <div className="flex items-start gap-4 mb-6 border-b pb-4">
+                                            <div className="bg-brand-100 p-3 rounded-full text-brand-600">
+                                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                            </div>
+                                            <div>
+                                                <h3 className="font-bold text-lg text-slate-800">CJP Groove Weld (รอยเชื่อมบากลึกเต็ม)</h3>
+                                                <p className="text-slate-600 text-sm mt-1">สำหรับ CJP Groove Weld มาตรฐาน AISC ระบุว่ากำลังของรอยเชื่อมจะมีความแข็งแรงเทียบเท่าหรือมากกว่าวัสดุชิ้นงาน (Base Metal) เสมอหากใช้ลวดเชื่อมที่เหมาะสม (Matching filler metal) ดังนั้นการคำนวณกำลังรับน้ำหนักจึงควบคุมโดยพิกัดกำลังของ Base Metal ตามปกติ</p>
+                                            </div>
+                                        </div>
+                                        <div className="bg-slate-50 border border-slate-200 rounded-lg p-6 text-center">
+                                            <svg className="w-32 h-32 mx-auto mb-4" viewBox="0 0 200 100">
+                                                <rect x="10" y="30" width="85" height="40" fill="#cbd5e1" stroke="#475569" strokeWidth="2"/>
+                                                <rect x="105" y="30" width="85" height="40" fill="#cbd5e1" stroke="#475569" strokeWidth="2"/>
+                                                <polygon points="95,30 105,30 105,70 95,70" fill="#38bdf8" stroke="#0284c7" strokeWidth="2" opacity="0.8"/>
+                                                <text x="100" y="90" textAnchor="middle" fontSize="12" fill="#475569">Complete Joint Penetration</text>
+                                            </svg>
+                                            <h4 className="font-semibold text-slate-800 text-lg">ไม่ต้องคำนวณกำลังรอยเชื่อม</h4>
+                                            <p className="text-slate-500 mt-2">ให้คำนวณกำลังรับแรงดึง, แรงอัด, หรือแรงเฉือนของ Base Metal ตาม Section J4 หรือ Chapter D, E, G แทน</p>
+                                        </div>
+                                    </Card>
+                                </div>
+                            )}
+
+                            {/* --- TAB: PJP GROOVE WELD --- */}
+                            {activeTab === 'pjp' && (
+                                <div className="space-y-4 animate-fade-in">
+                                    <div className="grid md:grid-cols-3 gap-4">
+                                        <Card className="p-4 md:col-span-1 border-t-4 border-t-brand-500">
+                                            <h3 className="font-bold text-slate-800 mb-3">พารามิเตอร์ PJP Groove</h3>
+                                            <div className="space-y-4">
+                                                <div>
+                                                    <label className="block text-sm text-slate-600 mb-1">ความลึกร่องบาก (S) - mm</label>
+                                                    <input type="number" value={pjpS} onChange={(e) => setPjpS(Number(e.target.value))} className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-brand-500 focus:border-brand-500" />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm text-slate-600 mb-1">มุมบาก (Angle) - องศา</label>
+                                                    <select value={pjpAngle} onChange={(e) => setPjpAngle(Number(e.target.value))} className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-brand-500 focus:border-brand-500">
+                                                        <option value={60}>≥ 60 องศา</option>
+                                                        <option value={45}>&lt; 60 องศา (หัก 3 mm)</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm text-slate-600 mb-1">ความยาวรอยเชื่อม (L) - mm</label>
+                                                    <input type="number" value={pjpL} onChange={(e) => setPjpL(Number(e.target.value))} className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-brand-500 focus:border-brand-500" />
+                                                </div>
+                                            </div>
+                                        </Card>
+
+                                        <Card className="p-5 md:col-span-2">
+                                            <h3 className="font-bold text-slate-800 mb-4 border-b pb-2">วิธีการคำนวณ (Calculation Steps)</h3>
+                                            
+                                            <StepBox title="1. หาความหนาคอประสานผล (Effective Throat, t_e)" reference="AISC Table J2.1">
+                                                <p className="text-sm text-slate-600 mb-2">อิงตามกระบวนการเชื่อม SMAW:</p>
+                                                {pjpAngle >= 60 ? (
+                                                    <Eq><span>มุม ≥ 60° </span> <span>→</span> <span>t<Sub>e</Sub> = S = {pjpS} mm</span></Eq>
+                                                ) : (
+                                                    <Eq><span>มุม &lt; 60° </span> <span>→</span> <span>t<Sub>e</Sub> = S - 3 mm = {pjpS} - 3 = {pjpData.te} mm</span></Eq>
+                                                )}
+                                                <div className="text-brand-600 font-semibold mt-2">t<Sub>e</Sub> ใช้คำนวณ = {pjpData.te_cm} cm</div>
+                                            </StepBox>
+
+                                            <StepBox title="2. กำลังรับแรงเฉือนรอยเชื่อม (Weld Metal)" reference="AISC J2.4">
+                                                <Eq>
+                                                    <span>A<Sub>we</Sub></span> <span>=</span> <span>t<Sub>e</Sub> × L</span>
+                                                    <span>=</span> <span>{pjpData.te_cm} × {pjpData.L_cm}</span>
+                                                    <span>=</span> <strong>{formatNum(pjpData.Awe)} cm²</strong>
+                                                </Eq>
+                                                <Eq>
+                                                    <span>R<Sub>n</Sub></span> <span>=</span> <span>0.60 × F<Sub>EXX</Sub> × A<Sub>we</Sub></span>
+                                                    <span>=</span> <span>0.60 × {electrode} × {formatNum(pjpData.Awe)}</span>
+                                                    <span>=</span> <strong>{formatNum(pjpData.Rn_weld)} kg</strong>
+                                                </Eq>
+                                            </StepBox>
+
+                                            <div className="bg-slate-800 text-white rounded-lg p-4 flex flex-col md:flex-row items-center justify-between shadow-md mt-4">
+                                                <div>
+                                                    <div className="text-sm text-slate-300">กำลังของรอยเชื่อม (Design Strength)</div>
+                                                    <div className="text-xs text-slate-400 mt-1">{method === 'LRFD' ? `ϕ = ${phi_weld}` : `Ω = ${omega_weld}`} (เฉพาะรอยเชื่อม ไม่รวมการตรวจสอบ Base Metal)</div>
+                                                </div>
+                                                <div className="text-right mt-2 md:mt-0">
+                                                    <div className="text-2xl font-bold text-brand-400">{formatNum(pjpData.design_Rn_weld)} kg</div>
+                                                    <div className="text-sm">({formatNum(pjpData.design_Rn_weld / 1000)} ton)</div>
+                                                </div>
+                                            </div>
+                                        </Card>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* --- TAB: PLUG & SLOT WELD --- */}
+                            {activeTab === 'plug' && (
+                                <div className="space-y-4 animate-fade-in">
+                                    <div className="grid md:grid-cols-3 gap-4">
+                                        <Card className="p-4 md:col-span-1 border-t-4 border-t-brand-500">
+                                            <h3 className="font-bold text-slate-800 mb-3">พารามิเตอร์ Plug / Slot</h3>
+                                            <div className="space-y-4">
+                                                <div>
+                                                    <label className="block text-sm text-slate-600 mb-1">เส้นผ่านศูนย์กลาง/กว้าง (d) - mm</label>
+                                                    <input type="number" value={plugD} onChange={(e) => setPlugD(Number(e.target.value))} className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-brand-500 focus:border-brand-500" />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm text-slate-600 mb-1">ความยาว (L) - mm</label>
+                                                    <input type="number" value={plugL} onChange={(e) => setPlugL(Number(e.target.value))} className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-brand-500 focus:border-brand-500" />
+                                                    <div className="text-xs text-slate-400 mt-1">*ถ้า Plug ให้กรอก L = d</div>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm text-slate-600 mb-1">ความหนารอยอุด (t) - mm</label>
+                                                    <input type="number" value={plugT} onChange={(e) => setPlugT(Number(e.target.value))} className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-brand-500 focus:border-brand-500" />
+                                                </div>
+                                            </div>
+                                        </Card>
+
+                                        <Card className="p-5 md:col-span-2">
+                                            <h3 className="font-bold text-slate-800 mb-4 border-b pb-2">วิธีการคำนวณ (Calculation Steps)</h3>
+                                            
+                                            <StepBox title={`1. พื้นที่รับแรงเฉือน (${plugData.isSlot ? 'Slot Weld' : 'Plug Weld'})`} reference="AISC J2.3">
+                                                {plugData.isSlot ? (
+                                                    <Eq>
+                                                        <span>A<Sub>w</Sub></span> <span>=</span> <span>(πd²/4) + d(L - d)</span>
+                                                        <span>=</span> <span>(π({plugData.d_cm})²/4) + {plugData.d_cm}({plugData.L_cm} - {plugData.d_cm})</span>
+                                                    </Eq>
+                                                ) : (
+                                                    <Eq>
+                                                        <span>A<Sub>w</Sub></span> <span>=</span> <span>πd²/4</span>
+                                                        <span>=</span> <span>π({plugData.d_cm})² / 4</span>
+                                                    </Eq>
+                                                )}
+                                                <Eq><span className="invisible">A<Sub>w</Sub></span> <span>=</span> <strong>{formatNum(plugData.Aw)} cm²</strong></Eq>
+                                            </StepBox>
+
+                                            <StepBox title="2. กำลังรับแรงเฉือนรอยเชื่อม (Weld Metal)" reference="AISC J2.4">
+                                                <Eq>
+                                                    <span>R<Sub>n</Sub></span> <span>=</span> <span>0.60 × F<Sub>EXX</Sub> × A<Sub>w</Sub></span>
+                                                    <span>=</span> <span>0.60 × {electrode} × {formatNum(plugData.Aw)}</span>
+                                                    <span>=</span> <strong>{formatNum(plugData.Rn_weld)} kg</strong>
+                                                </Eq>
+                                            </StepBox>
+
+                                            <div className="bg-slate-800 text-white rounded-lg p-4 flex flex-col md:flex-row items-center justify-between shadow-md mt-4">
+                                                <div>
+                                                    <div className="text-sm text-slate-300">กำลังของรอยเชื่อม (Design Strength)</div>
+                                                    <div className="text-xs text-slate-400 mt-1">{method === 'LRFD' ? `ϕ = ${phi_weld}` : `Ω = ${omega_weld}`}</div>
+                                                </div>
+                                                <div className="text-right mt-2 md:mt-0">
+                                                    <div className="text-2xl font-bold text-brand-400">{formatNum(plugData.design_Rn_weld)} kg</div>
+                                                    <div className="text-sm">({formatNum(plugData.design_Rn_weld / 1000)} ton)</div>
+                                                </div>
+                                            </div>
+                                        </Card>
+                                    </div>
+                                </div>
+                            )}
+
+                        </div>
+                    </main>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
