@@ -68,7 +68,7 @@
         );
 
         const Eq = ({ children }) => (
-            <div className="flex items-center space-x-2 text-slate-800 math-box overflow-x-auto py-1">
+            <div className="flex items-center flex-wrap gap-x-1.5 gap-y-1 text-slate-800 math-box py-1">
                 {children}
             </div>
         );
@@ -126,13 +126,12 @@
             const phi_shear_r = 0.75;
             const omega_shear_r = 2.00;
 
+            // Number Formatter: no decimal for integers, 2 decimals otherwise
             const formatNum = (num) => {
                 const n = Number(num);
-                // ถ้าเป็นจำนวนเต็ม ให้ไม่ต้องแสดงจุดทศนิยม
                 if (Number.isInteger(n)) {
                     return n.toLocaleString('en-US');
                 }
-                // ถ้ามีเศษทศนิยม ให้แสดง 2 ตำแหน่ง
                 return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             };
 
@@ -269,6 +268,7 @@
                             </div>
                         </Card>
 
+                        {}
                         {/* Tabs Navigation */}
                         <div className="flex space-x-1 overflow-x-auto hide-scrollbar border-b border-slate-200 mb-4">
                             {[
@@ -291,6 +291,7 @@
                         {/* Tab Content Area */}
                         <div className="min-h-[500px]">
                             
+                            {}
                             {/* --- TAB: GUIDE --- */}
                             {activeTab === 'guide' && (
                                 <div className="space-y-4 animate-fade-in">
@@ -318,6 +319,18 @@
                                                         <tr><td className="px-3 py-2 border-b">6 &lt; t ≤ 13 mm</td><td className="px-3 py-2 border-b">5</td></tr>
                                                         <tr><td className="px-3 py-2 border-b">13 &lt; t ≤ 19 mm</td><td className="px-3 py-2 border-b">6</td></tr>
                                                         <tr><td className="px-3 py-2">t &gt; 19 mm</td><td className="px-3 py-2">8</td></tr>
+                                                    </tbody>
+                                                </table>
+
+                                                <h4 className="font-semibold text-slate-800 mt-6 mb-2">ข้อกำหนดขนาดรอยเชื่อมมุมสูงสุด (AISC Sec. J2.2b)</h4>
+                                                <p className="text-sm text-slate-600 mb-2">พิจารณาจากความหนาของขอบชิ้นงานที่บางกว่า (t<Sub>min</Sub>) เพื่อป้องกันความร้อนจากการเชื่อมทำให้ขอบชิ้นงานหลอมละลายแหว่งหายไป</p>
+                                                <table className="w-full text-sm text-left text-slate-600 border border-slate-200">
+                                                    <thead className="bg-slate-50">
+                                                        <tr><th className="px-3 py-2 border-b">ความหนาชิ้นงานที่บางกว่า (t<Sub>min</Sub>)</th><th className="px-3 py-2 border-b">w<Sub>max</Sub> (mm)</th></tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr><td className="px-3 py-2 border-b">t<Sub>min</Sub> &lt; 6 mm</td><td className="px-3 py-2 border-b">t<Sub>min</Sub></td></tr>
+                                                        <tr><td className="px-3 py-2">t<Sub>min</Sub> &ge; 6 mm</td><td className="px-3 py-2">t<Sub>min</Sub> - 2</td></tr>
                                                     </tbody>
                                                 </table>
                                             </div>
@@ -351,6 +364,7 @@
                                 </div>
                             )}
 
+                            {}
                             {/* --- TAB: FILLET WELD --- */}
                             {activeTab === 'fillet' && (
                                 <div className="space-y-4 animate-fade-in">
@@ -384,7 +398,7 @@
                                         <Card className="p-5 md:col-span-2">
                                             <h3 className="font-bold text-slate-800 mb-4 border-b pb-2">วิธีการคำนวณ (Calculation Steps)</h3>
                                             
-                                            <StepBox title="1. สรุปตัวแปรสำหรับการคำนวณ" reference={method}>
+                                            <StepBox title="1. สรุปตัวแปรสำหรับการคำนวณ" reference={`อ้างอิง: AISC Chapter B (${method})`}>
                                                 <ul className="grid grid-cols-2 gap-2 text-slate-700">
                                                     <li>F<Sub>EXX</Sub> = {formatNum(electrode)} ksc</li>
                                                     <li>F<Sub>y</Sub> = {formatNum(fy)} ksc, F<Sub>u</Sub> = {formatNum(fu)} ksc</li>
@@ -399,7 +413,7 @@
                                                 </ul>
                                             </StepBox>
 
-                                            <StepBox title="2. กำลังรับแรงเฉือนของลวดเชื่อม (Weld Metal)" reference="AISC J2.4">
+                                            <StepBox title="2. กำลังรับแรงเฉือนของลวดเชื่อม (Weld Metal)" reference="อ้างอิง: AISC Sec. J2.4 (Eq. J2-3)">
                                                 <Eq>
                                                     <span>A<Sub>we</Sub></span> <span>=</span> <span>w × 0.707 × L</span>
                                                     <span>=</span> <span>{checkFilletWeld.w_cm} × 0.707 × {checkFilletWeld.L_cm}</span>
@@ -410,7 +424,7 @@
                                                     <span>=</span> <span>(0.60 × F<Sub>EXX</Sub>) × A<Sub>we</Sub></span>
                                                 </Eq>
                                                 <Eq>
-                                                    <span className="invisible">R<Sub>n,weld</Sub></span> <span>=</span> <span>0.60 × {electrode} × {formatNum(checkFilletWeld.Awe)}</span>
+                                                    <span className="invisible">R<Sub>n,weld</Sub></span> <span>=</span> <span>0.60 × {formatNum(electrode)} × {formatNum(checkFilletWeld.Awe)}</span>
                                                     <span>=</span> <strong>{formatNum(checkFilletWeld.Rn_weld)} kg</strong>
                                                 </Eq>
                                                 <Eq>
@@ -420,21 +434,21 @@
                                                 </Eq>
                                             </StepBox>
 
-                                            <StepBox title="3. กำลังรับแรงเฉือนของชิ้นงาน (Base Metal - ใช้แผ่นที่บางกว่า t_min)" reference="AISC J4.2">
+                                            <StepBox title="3. กำลังรับแรงเฉือนของชิ้นงาน (Base Metal - ใช้แผ่นที่บางกว่า t_min)" reference="อ้างอิง: AISC Sec. J4.2 (Eq. J4-3, J4-4)">
                                                 <div className="text-xs text-slate-500 mb-2">*A<Sub>gv</Sub> = A<Sub>nv</Sub> = t<Sub>min</Sub> × L = {checkFilletWeld.tMin_cm} × {checkFilletWeld.L_cm} = {formatNum(checkFilletWeld.tMin_cm * checkFilletWeld.L_cm)} cm²</div>
                                                 <div className="grid grid-cols-2 gap-4">
                                                     <div className="border-r pr-2 border-slate-200">
                                                         <div className="font-semibold text-slate-700 mb-1">Shear Yielding</div>
-                                                        <Eq>R<Sub>n,y</Sub> = 0.60F<Sub>y</Sub>A<Sub>gv</Sub></Eq>
-                                                        <Eq>R<Sub>n,y</Sub> = 0.60({fy})({formatNum(checkFilletWeld.tMin_cm * checkFilletWeld.L_cm)})</Eq>
-                                                        <Eq>R<Sub>n,y</Sub> = {formatNum(checkFilletWeld.Rn_bm_y)} kg</Eq>
+                                                        <Eq><span>R<Sub>n,y</Sub></span> <span>=</span> <span>0.60F<Sub>y</Sub>A<Sub>gv</Sub></span></Eq>
+                                                        <Eq><span>R<Sub>n,y</Sub></span> <span>=</span> <span>0.60({formatNum(fy)})({formatNum(checkFilletWeld.tMin_cm * checkFilletWeld.L_cm)})</span></Eq>
+                                                        <Eq><span>R<Sub>n,y</Sub></span> <span>=</span> <span>{formatNum(checkFilletWeld.Rn_bm_y)} kg</span></Eq>
                                                         <Eq><span className="text-brand-700 font-medium">Design = {formatNum(checkFilletWeld.design_Rn_bm_y)} kg</span></Eq>
                                                     </div>
                                                     <div>
                                                         <div className="font-semibold text-slate-700 mb-1">Shear Rupture</div>
-                                                        <Eq>R<Sub>n,r</Sub> = 0.60F<Sub>u</Sub>A<Sub>nv</Sub></Eq>
-                                                        <Eq>R<Sub>n,r</Sub> = 0.60({fu})({formatNum(checkFilletWeld.tMin_cm * checkFilletWeld.L_cm)})</Eq>
-                                                        <Eq>R<Sub>n,r</Sub> = {formatNum(checkFilletWeld.Rn_bm_r)} kg</Eq>
+                                                        <Eq><span>R<Sub>n,r</Sub></span> <span>=</span> <span>0.60F<Sub>u</Sub>A<Sub>nv</Sub></span></Eq>
+                                                        <Eq><span>R<Sub>n,r</Sub></span> <span>=</span> <span>0.60({formatNum(fu)})({formatNum(checkFilletWeld.tMin_cm * checkFilletWeld.L_cm)})</span></Eq>
+                                                        <Eq><span>R<Sub>n,r</Sub></span> <span>=</span> <span>{formatNum(checkFilletWeld.Rn_bm_r)} kg</span></Eq>
                                                         <Eq><span className="text-brand-700 font-medium">Design = {formatNum(checkFilletWeld.design_Rn_bm_r)} kg</span></Eq>
                                                     </div>
                                                 </div>
@@ -455,6 +469,7 @@
                                 </div>
                             )}
 
+                            {}
                             {/* --- TAB: CJP GROOVE WELD --- */}
                             {activeTab === 'cjp' && (
                                 <div className="space-y-4 animate-fade-in">
@@ -476,15 +491,68 @@
                                                 <text x="100" y="90" textAnchor="middle" fontSize="12" fill="#475569">Complete Joint Penetration</text>
                                             </svg>
                                             <h4 className="font-semibold text-slate-800 text-lg">ไม่ต้องคำนวณกำลังรอยเชื่อม</h4>
-                                            <p className="text-slate-500 mt-2">ให้คำนวณกำลังรับแรงดึง, แรงอัด, หรือแรงเฉือนของ Base Metal ตาม Section J4 หรือ Chapter D, E, G แทน</p>
+                                            <p className="text-slate-500 mt-2">ให้คำนวณกำลังรับแรงของ Base Metal ตาม AISC Section J4 หรือ Chapter D, E, G แทน <br/><span className="text-xs text-brand-600 bg-brand-50 px-2 py-1 rounded border border-brand-100 mt-2 inline-block">อ้างอิง: AISC Table J2.5</span></p>
                                         </div>
                                     </Card>
                                 </div>
                             )}
 
+                            {}
                             {/* --- TAB: PJP GROOVE WELD --- */}
                             {activeTab === 'pjp' && (
                                 <div className="space-y-4 animate-fade-in">
+                                    {/* ภาพประกอบและคำอธิบาย PJP */}
+                                    <Card className="p-5 mb-4">
+                                        <div className="grid md:grid-cols-2 gap-6 items-center">
+                                            <div className="bg-slate-50 p-4 rounded-lg flex flex-col items-center justify-center border border-slate-200">
+                                                <h4 className="font-semibold text-slate-800 mb-2 w-full text-center">ภาพประกอบ PJP Groove Weld (Single-V)</h4>
+                                                <svg viewBox="0 0 300 140" className="w-full max-w-sm drop-shadow-sm">
+                                                    {/* Base Plates (Single-V Groove with Root Face) */}
+                                                    <polygon points="20,40 110,40 145,80 145,110 20,110" fill="#cbd5e1" stroke="#475569" strokeWidth="2"/>
+                                                    <polygon points="280,40 190,40 155,80 155,110 280,110" fill="#cbd5e1" stroke="#475569" strokeWidth="2"/>
+                                                    
+                                                    {/* Weld Metal (Filling the V and bulging on top) */}
+                                                    <path d="M 105 40 Q 150 20 195 40 L 155 80 L 145 80 Z" fill="#38bdf8" stroke="#0284c7" strokeWidth="2" opacity="0.8"/>
+                                                    
+                                                    {/* Dimension Lines - S (Depth of Preparation) */}
+                                                    <line x1="90" y1="40" x2="50" y2="40" stroke="#ef4444" strokeWidth="1" strokeDasharray="4 2"/>
+                                                    <line x1="145" y1="80" x2="50" y2="80" stroke="#ef4444" strokeWidth="1" strokeDasharray="4 2"/>
+                                                    
+                                                    <line x1="65" y1="40" x2="65" y2="80" stroke="#ef4444" strokeWidth="1.5"/>
+                                                    <polygon points="65,40 62,46 68,46" fill="#ef4444"/>
+                                                    <polygon points="65,80 62,74 68,74" fill="#ef4444"/>
+                                                    <text x="50" y="65" fontSize="12" fill="#ef4444" fontWeight="bold">S</text>
+
+                                                    {/* Dimension Lines - te (Effective Throat) */}
+                                                    <line x1="210" y1="40" x2="250" y2="40" stroke="#0284c7" strokeWidth="1" strokeDasharray="4 2"/>
+                                                    <line x1="160" y1="72" x2="250" y2="72" stroke="#0284c7" strokeWidth="1" strokeDasharray="4 2"/> 
+                                                    
+                                                    <line x1="235" y1="40" x2="235" y2="72" stroke="#0284c7" strokeWidth="1.5"/>
+                                                    <polygon points="235,40 232,46 238,46" fill="#0284c7"/>
+                                                    <polygon points="235,72 232,66 238,66" fill="#0284c7"/>
+                                                    <text x="245" y="60" fontSize="12" fill="#0284c7" fontWeight="bold">t<tspan dy="2" fontSize="10">e</tspan></text>
+
+                                                    {/* Angle Indicator */}
+                                                    <path d="M 125 55 A 35 35 0 0 1 175 55" fill="none" stroke="#475569" strokeWidth="1"/>
+                                                    <text x="150" y="50" fontSize="10" fill="#475569" textAnchor="middle">Angle</text>
+                                                </svg>
+                                            </div>
+                                            <div>
+                                                <h4 className="font-semibold text-slate-800 mb-2 border-b pb-2">คำอธิบายตัวแปร PJP (Partial Joint Penetration)</h4>
+                                                <ul className="space-y-2 text-sm text-slate-600">
+                                                    <li><strong className="text-slate-800">S (Depth of Preparation)</strong> = ความลึกของร่องบากที่เตรียมไว้</li>
+                                                    <li><strong className="text-slate-800">Angle (Groove Angle)</strong> = มุมรวมของร่องบาก</li>
+                                                    <li><strong className="text-slate-800">t<Sub>e</Sub> (Effective Throat)</strong> = ความหนาคอประสานผลที่ใช้รับแรง
+                                                        <ul className="ml-4 mt-1 list-disc text-slate-500">
+                                                            <li>มุมบาก <strong className="text-slate-700">≥ 60°</strong> : t<Sub>e</Sub> = S</li>
+                                                            <li>มุมบาก <strong className="text-slate-700">&lt; 60°</strong> : t<Sub>e</Sub> = S - 3 mm (เผื่อการซึมลึกที่ไม่สมบูรณ์ที่ก้นร่อง)</li>
+                                                        </ul>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </Card>
+
                                     <div className="grid md:grid-cols-3 gap-4">
                                         <Card className="p-4 md:col-span-1 border-t-4 border-t-brand-500">
                                             <h3 className="font-bold text-slate-800 mb-3">พารามิเตอร์ PJP Groove</h3>
@@ -510,7 +578,7 @@
                                         <Card className="p-5 md:col-span-2">
                                             <h3 className="font-bold text-slate-800 mb-4 border-b pb-2">วิธีการคำนวณ (Calculation Steps)</h3>
                                             
-                                            <StepBox title="1. หาความหนาคอประสานผล (Effective Throat, t_e)" reference="AISC Table J2.1">
+                                            <StepBox title="1. หาความหนาคอประสานผล (Effective Throat, t_e)" reference="อ้างอิง: AISC Table J2.1">
                                                 <p className="text-sm text-slate-600 mb-2">อิงตามกระบวนการเชื่อม SMAW:</p>
                                                 {pjpAngle >= 60 ? (
                                                     <Eq><span>มุม ≥ 60° </span> <span>→</span> <span>t<Sub>e</Sub> = S = {pjpS} mm</span></Eq>
@@ -520,7 +588,7 @@
                                                 <div className="text-brand-600 font-semibold mt-2">t<Sub>e</Sub> ใช้คำนวณ = {pjpData.te_cm} cm</div>
                                             </StepBox>
 
-                                            <StepBox title="2. กำลังรับแรงเฉือนรอยเชื่อม (Weld Metal)" reference="AISC J2.4">
+                                            <StepBox title="2. กำลังรับแรงเฉือนรอยเชื่อม (Weld Metal)" reference="อ้างอิง: AISC Sec. J2.4 (Eq. J2-3)">
                                                 <Eq>
                                                     <span>A<Sub>we</Sub></span> <span>=</span> <span>t<Sub>e</Sub> × L</span>
                                                     <span>=</span> <span>{pjpData.te_cm} × {pjpData.L_cm}</span>
@@ -528,7 +596,7 @@
                                                 </Eq>
                                                 <Eq>
                                                     <span>R<Sub>n</Sub></span> <span>=</span> <span>0.60 × F<Sub>EXX</Sub> × A<Sub>we</Sub></span>
-                                                    <span>=</span> <span>0.60 × {electrode} × {formatNum(pjpData.Awe)}</span>
+                                                    <span>=</span> <span>0.60 × {formatNum(electrode)} × {formatNum(pjpData.Awe)}</span>
                                                     <span>=</span> <strong>{formatNum(pjpData.Rn_weld)} kg</strong>
                                                 </Eq>
                                             </StepBox>
@@ -548,9 +616,59 @@
                                 </div>
                             )}
 
+                            {}
                             {/* --- TAB: PLUG & SLOT WELD --- */}
                             {activeTab === 'plug' && (
                                 <div className="space-y-4 animate-fade-in">
+                                    {/* ภาพประกอบและคำอธิบาย Plug & Slot */}
+                                    <Card className="p-5 mb-4">
+                                        <div className="grid md:grid-cols-2 gap-6 items-center">
+                                            <div className="bg-slate-50 p-4 rounded-lg flex flex-col items-center justify-center border border-slate-200">
+                                                <h4 className="font-semibold text-slate-800 mb-2 w-full text-center">ภาพประกอบ Plug & Slot Weld</h4>
+                                                <svg viewBox="0 0 300 150" className="w-full max-w-sm drop-shadow-sm">
+                                                    {/* Base Plate 1 (Bottom) */}
+                                                    <rect x="30" y="70" width="240" height="20" fill="#94a3b8" stroke="#475569" strokeWidth="1"/>
+                                                    {/* Base Plate 2 (Top) */}
+                                                    <rect x="50" y="40" width="200" height="30" fill="#cbd5e1" stroke="#475569" strokeWidth="2"/>
+                                                    
+                                                    {/* Plug Weld Hole */}
+                                                    <ellipse cx="100" cy="55" rx="20" ry="10" fill="#38bdf8" stroke="#0284c7" strokeWidth="2" opacity="0.8"/>
+                                                    <line x1="100" y1="40" x2="100" y2="70" stroke="#0284c7" strokeWidth="1" strokeDasharray="2 2"/>
+                                                    
+                                                    {/* Slot Weld Hole */}
+                                                    <path d="M 180 45 L 220 45 A 10 10 0 0 1 220 65 L 180 65 A 10 10 0 0 1 180 45 Z" fill="#38bdf8" stroke="#0284c7" strokeWidth="2" opacity="0.8"/>
+                                                    
+                                                    {/* Dimensions Plug */}
+                                                    <line x1="80" y1="30" x2="120" y2="30" stroke="#ef4444" strokeWidth="1.5"/>
+                                                    <text x="95" y="25" fontSize="12" fill="#ef4444" fontWeight="bold">d</text>
+                                                    <text x="85" y="90" fontSize="10" fill="#475569" fontWeight="bold">Plug Weld</text>
+
+                                                    {/* Dimensions Slot */}
+                                                    <line x1="170" y1="30" x2="230" y2="30" stroke="#ef4444" strokeWidth="1.5"/>
+                                                    <text x="195" y="25" fontSize="12" fill="#ef4444" fontWeight="bold">L</text>
+                                                    
+                                                    <line x1="165" y1="45" x2="165" y2="65" stroke="#ef4444" strokeWidth="1.5"/>
+                                                    <text x="155" y="58" fontSize="12" fill="#ef4444" fontWeight="bold">d</text>
+                                                    <text x="180" y="90" fontSize="10" fill="#475569" fontWeight="bold">Slot Weld</text>
+                                                </svg>
+                                            </div>
+                                            <div>
+                                                <h4 className="font-semibold text-slate-800 mb-2 border-b pb-2">คำอธิบายตัวแปร Plug & Slot</h4>
+                                                <ul className="space-y-2 text-sm text-slate-600">
+                                                    <li><strong className="text-slate-800">d (Diameter/Width)</strong> = เส้นผ่านศูนย์กลางของรู (Plug) หรือความกว้างของร่อง (Slot)</li>
+                                                    <li><strong className="text-slate-800">L (Length)</strong> = ความยาวของร่อง
+                                                        <ul className="ml-4 mt-1 list-disc text-slate-500">
+                                                            <li><strong className="text-slate-700">Plug Weld</strong> : ถือว่า L = d (รูปร่างกลม)</li>
+                                                            <li><strong className="text-slate-700">Slot Weld</strong> : L ต้องมีค่ามากกว่า d</li>
+                                                        </ul>
+                                                    </li>
+                                                    <li><strong className="text-slate-800">t (Thickness of Weld)</strong> = ความหนาของเนื้อเชื่อมที่อุดลงไปในรูหรือร่อง</li>
+                                                    <li><strong className="text-slate-800">A<Sub>w</Sub> (Shear Area)</strong> = พื้นที่รับแรงเฉือนของรอยเชื่อม (พื้นที่หน้าตัดขนานกับรอยต่อ)</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </Card>
+
                                     <div className="grid md:grid-cols-3 gap-4">
                                         <Card className="p-4 md:col-span-1 border-t-4 border-t-brand-500">
                                             <h3 className="font-bold text-slate-800 mb-3">พารามิเตอร์ Plug / Slot</h3>
@@ -574,7 +692,7 @@
                                         <Card className="p-5 md:col-span-2">
                                             <h3 className="font-bold text-slate-800 mb-4 border-b pb-2">วิธีการคำนวณ (Calculation Steps)</h3>
                                             
-                                            <StepBox title={`1. พื้นที่รับแรงเฉือน (${plugData.isSlot ? 'Slot Weld' : 'Plug Weld'})`} reference="AISC J2.3">
+                                            <StepBox title={`1. พื้นที่รับแรงเฉือน (${plugData.isSlot ? 'Slot Weld' : 'Plug Weld'})`} reference="อ้างอิง: AISC Sec. J2.3">
                                                 {plugData.isSlot ? (
                                                     <Eq>
                                                         <span>A<Sub>w</Sub></span> <span>=</span> <span>(πd²/4) + d(L - d)</span>
@@ -589,10 +707,10 @@
                                                 <Eq><span className="invisible">A<Sub>w</Sub></span> <span>=</span> <strong>{formatNum(plugData.Aw)} cm²</strong></Eq>
                                             </StepBox>
 
-                                            <StepBox title="2. กำลังรับแรงเฉือนรอยเชื่อม (Weld Metal)" reference="AISC J2.4">
+                                            <StepBox title="2. กำลังรับแรงเฉือนรอยเชื่อม (Weld Metal)" reference="อ้างอิง: AISC Sec. J2.4 (Eq. J2-3)">
                                                 <Eq>
                                                     <span>R<Sub>n</Sub></span> <span>=</span> <span>0.60 × F<Sub>EXX</Sub> × A<Sub>w</Sub></span>
-                                                    <span>=</span> <span>0.60 × {electrode} × {formatNum(plugData.Aw)}</span>
+                                                    <span>=</span> <span>0.60 × {formatNum(electrode)} × {formatNum(plugData.Aw)}</span>
                                                     <span>=</span> <strong>{formatNum(plugData.Rn_weld)} kg</strong>
                                                 </Eq>
                                             </StepBox>
