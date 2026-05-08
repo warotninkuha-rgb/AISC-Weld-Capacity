@@ -487,6 +487,18 @@
                                             </div>
                                         </Card>
                                     </div>
+
+                                    {/* เพิ่ม Note สำหรับ Fillet Weld */}
+                                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 shadow-sm">
+                                        <h4 className="font-bold text-amber-800 flex items-center gap-2 mb-2">
+                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                            ลักษณะการใช้งานและข้อควรระวัง (Fillet Weld)
+                                        </h4>
+                                        <div className="text-sm text-amber-900 space-y-2">
+                                            <p><strong>การใช้งาน:</strong> เป็นรอยเชื่อมที่นิยมใช้มากที่สุด (เช่น T-joint, Lap joint) เพราะทำงานง่าย ประหยัด ไม่ต้องเตรียมบากขอบชิ้นงาน</p>
+                                            <p className="text-red-700"><strong>ข้อควรระวัง:</strong> หากจุดต่อต้องรับแรงดึงที่ทำให้เกิดการงัดชิ้นงาน (Prying action) ควรหลีกเลี่ยงการเชื่อมด้านเดียว ควร "เชื่อมรอบ" หรือ "เชื่อมประกบสองด้าน" เพื่อป้องกันการฉีกขาดที่โคนรอยเชื่อม (Root tear)</p>
+                                        </div>
+                                    </div>
                                 </div>
                             )}
 
@@ -514,6 +526,18 @@
                                             <p className="text-slate-500 mt-2">ให้คำนวณกำลังรับแรงดึง, แรงอัด, หรือแรงเฉือนของ Base Metal ตาม Section J4 หรือ Chapter D, E, G แทน</p>
                                         </div>
                                     </Card>
+
+                                    {/* เพิ่ม Note สำหรับ CJP Groove Weld */}
+                                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 shadow-sm">
+                                        <h4 className="font-bold text-amber-800 flex items-center gap-2 mb-2">
+                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                            ลักษณะการใช้งานและข้อควรระวัง (CJP Groove Weld)
+                                        </h4>
+                                        <div className="text-sm text-amber-900 space-y-2">
+                                            <p><strong>การใช้งาน:</strong> ใช้เมื่อต้องการให้จุดต่อมีความแข็งแรงเทียบเท่าหรือมากกว่าเนื้อเหล็กเดิม 100% เหมาะสำหรับโครงสร้างหลักที่รับแรงดัด แรงดึงสูง หรือแรงสั่นสะเทือน (Fatigue loading)</p>
+                                            <p className="text-red-700"><strong>ข้อควรระวัง:</strong> ค่าใช้จ่ายในการทำงานสูง ใช้ลวดเชื่อมเยอะและต้องเจียรบากเตรียมขอบชิ้นงาน (Edge prep) นอกจากนี้มักถูกบังคับให้ต้องมีการตรวจสอบรอยเชื่อมด้วยวิธี NDT (เช่น X-ray หรือ Ultrasonic) อย่างเข้มงวด</p>
+                                        </div>
+                                    </div>
                                 </div>
                             )}
 
@@ -657,6 +681,18 @@
                                                 </div>
                                             </div>
                                         </Card>
+                                    </div>
+
+                                    {/* เพิ่ม Note สำหรับ PJP Groove Weld */}
+                                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 shadow-sm">
+                                        <h4 className="font-bold text-amber-800 flex items-center gap-2 mb-2">
+                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                            ลักษณะการใช้งานและข้อควรระวัง (PJP Groove Weld)
+                                        </h4>
+                                        <div className="text-sm text-amber-900 space-y-2">
+                                            <p><strong>การใช้งาน:</strong> เหมาะสำหรับต่อชนชิ้นงานที่มีความหนามาก แต่รับเพียงแรงสถิตยศาสตร์ทั่วไป (Static Load) รับแรงอัดและแรงเฉือนได้ดี ช่วยประหยัดเวลาและลดปริมาณลวดเชื่อมเมื่อเทียบกับการเชื่อมทะลุ (CJP)</p>
+                                            <p className="text-red-700"><strong>ข้อควรระวัง:</strong> <u>ห้ามใช้</u> กับโครงสร้างที่รับแรงสั่นสะเทือน (Fatigue) เด็ดขาด เพราะระยะเว้นโคนร่องที่ไม่ได้หลอมละลาย (Unwelded root) จะกลายเป็นจุดเริ่มต้นของรอยร้าว (Initial crack) และรับแรงดึงตั้งฉากได้จำกัด</p>
+                                        </div>
                                     </div>
                                 </div>
                             )}
@@ -806,6 +842,18 @@
                                                 </div>
                                             </div>
                                         </Card>
+                                    </div>
+
+                                    {/* เพิ่ม Note สำหรับ Plug & Slot Weld */}
+                                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 shadow-sm">
+                                        <h4 className="font-bold text-amber-800 flex items-center gap-2 mb-2">
+                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                            ลักษณะการใช้งานและข้อควรระวัง (Plug & Slot Weld)
+                                        </h4>
+                                        <div className="text-sm text-amber-900 space-y-2">
+                                            <p><strong>การใช้งาน:</strong> ใช้เชื่อมแผ่นเหล็กซ้อนทับกัน (Lap joint) ในกรณีที่ไม่มีระยะขอบชิ้นงานให้เดินแนวเชื่อมมุม (Fillet) หรือใช้ "เย็บ" ชิ้นงานตรงกลางแผ่นเพื่อป้องกันการโก่งตัว (Buckling)</p>
+                                            <p className="text-red-700"><strong>ข้อควรระวัง:</strong> รอยเชื่อมชนิดนี้ถูกออกแบบมาเพื่อรับ "แรงเฉือน (Shear)" เท่านั้น <u>ห้ามนำไปใช้</u> รับแรงดึงในทิศทางที่พยายามดึงชิ้นส่วนแยกออกจากกัน (Tension normal to surface) เพราะจะทำให้เกิดการลอกและฉีกขาดอย่างรวดเร็ว (Tearing)</p>
+                                        </div>
                                     </div>
                                 </div>
                             )}
