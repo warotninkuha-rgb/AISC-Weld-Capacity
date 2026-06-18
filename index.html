@@ -43,6 +43,13 @@
     
     <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script>
+        Babel.registerPreset('react-classic', {
+            presets: [
+                [Babel.availablePresets['react'], { runtime: 'classic' }]
+            ]
+        });
+    </script>
 
     <style>
         body { background-color: #f8fafc; }
@@ -54,7 +61,7 @@
 <body>
     <div id="root"></div>
 
-    <script type="text/babel">
+    <script type="text/babel" data-presets="react-classic,env">
         const { useState, useEffect, useMemo } = React;
 
         // Component สำหรับทำตัวห้อย สามารถเลือกได้ว่าจะดึงให้ชิดตัวหลักหรือไม่ (ใช้ className)
